@@ -5,7 +5,7 @@ Infrastructure as code for an Azure platform, split into three areas that are de
 | Area | Tooling | What it owns | Lifecycle |
 |---|---|---|---|
 | **Shared** | Pulumi | App Configuration, Key Vault, Container Registry | Once, used by every environment |
-| **Environment** | Pulumi | VNet, Service Bus, API Management, Front Door, Container Apps environment | One stack per environment (`test`, `uat`, `prod`, ...) |
+| **Environment** | Pulumi | VNet, Service Bus, API Management, Front Door, Container Apps environment, AI Foundry, AI Search, Private DNS zones | One stack per environment (`test`, `uat`, `prod`, ...) |
 | **App** | Aspire | Topics and subscriptions, queues, table storage, databases, workloads (APIs, web, functions) | Per app, per environment |
 
 ![Architecture](docs/architecture.svg)
@@ -69,22 +69,25 @@ One stack per environment, named for the environment (`test`, `uat`, `prod`). De
 
 - **VNet** with dedicated subnets for APIM and Container Apps, and a subnet for private endpoints (see Network layout).
 - **Service Bus** namespace. Apps create their own topics, subscriptions and queues inside it.
+- **AI Foundry** resource, one per environment, for model deployments and agents. Reached through a private endpoint.
+- **AI Search** service, one per environment. Apps create their own indexes in it. Reached through a private endpoint.
 - **API Management** hosting every API. APIs are added by the app layer, not here.
 - **Front Door** with a single `api` endpoint that routes to APIM, plus a web endpoint that routes straight to web container apps.
+- **Private DNS zones**, one set per environment, linked to that environment's VNet (see Private DNS).
 - **Container Apps environment** (ACA) integrated with the VNet. It hosts every workload type: APIs, web apps and functions. Identity granted `AcrPull` on the registry and read access to Key Vault and App Configuration.
 
 Stack inputs: environment name and a reference to the shared stack (via `StackReference` or passed in values).
-Stack outputs: `environmentName`, `apimName`, `serviceBusNamespace`, `containerAppsEnvironmentName`, `frontDoorEndpoint`, resource group.
+Stack outputs: `environmentName`, `apimName`, `serviceBusNamespace`, `foundryEndpoint`, `searchEndpoint`, `containerAppsEnvironmentName`, `frontDoorEndpoint`, resource group.
 
 ### Network layout
 
-Each environment has its own VNet. APIM and Container Apps each get a dedicated subnet because both require exclusive use of their subnet. Everything else that is PaaS (Service Bus, Key Vault, Container Registry, App Configuration) is reached through private endpoints in a shared endpoint subnet.
+Each environment has its own VNet. APIM and Container Apps each get a dedicated subnet because both require exclusive use of their subnet. Everything else that is PaaS (Service Bus, AI Foundry, AI Search, Key Vault, Container Registry, App Configuration) is reached through private endpoints in a shared endpoint subnet.
 
 | Subnet | Size | Holds | Notes |
 |---|---|---|---|
 | `snet-apim` | /27 | API Management | Dedicated. Delegation and NSG rules depend on the APIM tier (v2 tiers use VNet integration, Developer/Premium use internal mode). |
 | `snet-aca` | /23 | Container Apps environment | Dedicated and delegated to `Microsoft.App/environments`. Sized for growth: replicas consume addresses. A workload-profiles environment can use as small as /27 but /23 leaves headroom. |
-| `snet-pe` | /26 | Private endpoints | Service Bus, and the shared Key Vault, Container Registry and App Configuration. Private DNS zones are linked to the VNet. |
+| `snet-pe` | /26 | Private endpoints | Service Bus, AI Foundry, AI Search, and the shared Key Vault, Container Registry and App Configuration. Private DNS zones are linked to the VNet. |
 
 Address plan, one /16 per environment so VNets can be peered later without overlap:
 
@@ -95,6 +98,24 @@ Address plan, one /16 per environment so VNets can be peered later without overl
 | prod | `10.30.0.0/16` | `10.30.0.0/27` | `10.30.0.64/26` | `10.30.2.0/23` |
 
 The rest of each /16 (`x.x.4.0` upward) is reserved for future subnets.
+
+#### Private DNS
+
+Private DNS zones are **per environment**, created by the environment stack and linked only to that environment's VNet. Private endpoints register their records in the zones automatically through a DNS zone group.
+
+Why per environment: the shared Key Vault, Container Registry and App Configuration are single instances, but each environment creates its own private endpoint to them with its own IP. A single shared zone holds one record per name, so environments would overwrite each other. Per-environment zones let the same name resolve to the local endpoint IP in each VNet, and keep test changes away from prod resolution.
+
+| Zone | Used by |
+|---|---|
+| `privatelink.vaultcore.azure.net` | Key Vault (shared) |
+| `privatelink.azurecr.io` | Container Registry (shared) |
+| `privatelink.azconfig.io` | App Configuration (shared) |
+| `privatelink.servicebus.windows.net` | Service Bus |
+| `privatelink.search.windows.net` | AI Search |
+| `privatelink.cognitiveservices.azure.com`, `privatelink.openai.azure.com` | AI Foundry |
+| Container Apps environment domain | Only if the environment uses an internal load balancer |
+
+If the platform later grows a hub network with central DNS, firewall or on-premises connectivity, zones would move to the hub. That is out of scope for now.
 
 - **Front Door** is a global service and needs no subnet. It reaches APIM and the Container Apps environment over Private Link (Front Door Premium) or their public endpoints locked to Front Door.
 - **Shared services** have no VNet of their own. Each environment creates private endpoints to them in its `snet-pe`, so the shared Pulumi stack only needs to allow private endpoint connections.
@@ -154,6 +175,8 @@ Typical role assignments for a workload identity:
 - `Key Vault Secrets User` on the shared Key Vault.
 - `App Configuration Data Reader` on shared App Configuration.
 - `Azure Service Bus Data Sender` / `Receiver` on its own topics and queues.
+- `Search Index Data Contributor` / `Reader` on the environment AI Search, for apps that read or write indexes.
+- `Azure AI User` (or `Cognitive Services User`) on the environment AI Foundry, for apps that call models.
 - Data roles on its own tables or databases.
 
 ## Configuration and secrets
@@ -189,6 +212,7 @@ Teardown is the reverse. Removing an app removes only its topics, queues, data a
 - **Cross-stack references:** `StackReference` vs values passed in from the pipeline.
 - **Subscriptions:** is shared in one subscription with environments in separate ones, or everything in one?
 - **Shared across environments:** a single registry/Key Vault/App Configuration for all environments, or does prod get its own shared instance? Key Vault and App Configuration may want per-environment labels or separate vaults for prod secrets.
+- **AI services:** which model deployments live in the environment Foundry versus per app, and the AI Search SKU (it drives replica and partition cost per environment).
 - **Network assumptions:** confirm the address ranges, APIM tier (decides its subnet size and delegation), and whether Front Door Premium with Private Link is used.
 - **Web routing:** web endpoint hostname per app, or path-based routing on one web endpoint.
 - **Functions exposure:** Service Bus and timer triggers only, or also HTTP through APIM.
