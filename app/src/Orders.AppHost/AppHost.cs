@@ -44,40 +44,22 @@ var acaEnv = builder.AddPulumiAzureContainerAppEnvironment("aca")
     .WithLocation(location)
     .WithAzureName(AzureNameKind.UserAssignedIdentity, $"id-{workload}-app-{env}", "mi");
 
-// Local runs (aspire start / run) use emulators; publish and deploy use the real, existing resources.
-var isRun = builder.ExecutionContext.IsRunMode;
-
-IResourceBuilder<IResourceWithConnectionString> messaging;
-if (isRun)
-{
-    // The Pulumi Service Bus integration has no emulator, so locally use the official one.
-    var local = builder.AddAzureServiceBus("messaging").RunAsEmulator();
-    var localEvents = local.AddServiceBusTopic("order-events");
-    localEvents.AddServiceBusSubscription("fulfillment");
-    localEvents.AddServiceBusSubscription("audit");
-    local.AddServiceBusQueue("invoice-requests");
-    messaging = local;
-}
-else
-{
-    var existing = builder.AddPulumiServiceBus("messaging")
-        .WithPulumiStack(stack)
-        .AsExisting(names.ServiceBus(env), names.EnvResourceGroup(env));
-    var orderEvents = existing.AddServiceBusTopic("order-events", "order-events");
-    orderEvents.AddServiceBusSubscription("fulfillment", "fulfillment");
-    orderEvents.AddServiceBusSubscription("audit", "audit");
-    existing.AddServiceBusQueue("invoice-requests", "invoice-requests");
-    messaging = existing;
-}
+var messaging = builder.AddPulumiServiceBus("messaging")
+    .WithPulumiStack(stack)
+    .AsExisting(names.ServiceBus(env), names.EnvResourceGroup(env));
 
 // ---- App-owned resources ----------------------------------------------------------------
+var orderEvents = messaging.AddServiceBusTopic("order-events", "order-events");
+orderEvents.AddServiceBusSubscription("fulfillment", "fulfillment");
+orderEvents.AddServiceBusSubscription("audit", "audit");
+messaging.AddServiceBusQueue("invoice-requests", "invoice-requests");
+
 var storage = builder.AddPulumiStorage("storage")
     .WithPulumiStack(stack)
     .WithResourceGroup(appRg)
     .WithLocation(location)
     .WithSku(env == "prod" ? "Standard_GRS" : "Standard_LRS")
     .WithAzureName(AzureNameKind.StorageAccount, $"st{workload}app{env}{suffix}");
-if (isRun) storage.RunAsEmulator();
 var tables = storage.AddTables("tables");
 var queues = storage.AddQueues("queues");
 storage.AddQueue("invoice-queue", "invoice-requests");
@@ -87,7 +69,6 @@ var cosmos = builder.AddPulumiCosmosDB("cosmos")
     .WithResourceGroup(appRg)
     .WithLocation(location)
     .WithAzureName(AzureNameKind.CosmosDbAccount, $"cosmos-{workload}-app-{env}-{suffix}");
-if (isRun) cosmos.RunAsEmulator();
 var ordersDb = cosmos.AddCosmosDatabase("ordersdb", "ordersdb");
 ordersDb.AddContainer("products", "/id", "products");
 ordersDb.AddContainer("orders", "/id", "orders");
