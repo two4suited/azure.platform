@@ -62,7 +62,7 @@ Deploy only after `shared` and `environment` stacks are up.
 
 ## Library dependency
 
-The AppHost needs `AsExisting` for Service Bus, Container Apps environment and Container Registry, added in [Sheridan.Aspire.Pulumi#157](https://github.com/two4suited/Sheridan.Aspire.Pulumi/pull/157). Until that is released, `nuget.config` points at a local feed (`~/.nuget-local`) holding `1.2.6-pr157`. Once released, delete `nuget.config` and bump the `Sheridan.*` package versions.
+The AppHost uses `AsExisting` for Service Bus, Container Apps environment and Container Registry, released in Sheridan.Aspire.Pulumi 1.3.0 ([#157](https://github.com/two4suited/Sheridan.Aspire.Pulumi/pull/157)).
 
 ## Not done yet
 
