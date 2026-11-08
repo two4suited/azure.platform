@@ -1,0 +1,9 @@
+config:
+  azure-native:location: westus2
+  platform:workload: plat
+  platform:location: westus2
+  platform:nameSuffix: "002"
+  platform:serviceBusSku: Standard
+  platform:sharedPrivateEndpoints: "true"
+environment:
+  - azure/test

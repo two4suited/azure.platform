@@ -9,6 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\common\Platform.Common\Platform.Common.csproj" />
     <PackageReference Include="Pulumi" Version="3.116.2" />
     <PackageReference Include="Pulumi.AzureNative" Version="3.30.0" />
   </ItemGroup>

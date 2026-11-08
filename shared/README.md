@@ -2,6 +2,8 @@
 
 Pulumi (C#) project for the shared services resource group. Deployed once, used by every environment and app.
 
+Pulumi Cloud: project `platform`, stack `shared`. Names come from `common/Platform.Common`, so the environment and app layers derive them without a stack reference.
+
 | Resource | Name | Notes |
 |---|---|---|
 | Resource group | `rg-{workload}-shared` | |

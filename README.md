@@ -21,6 +21,7 @@ Infrastructure as code for an Azure platform, split into three areas that are de
 ```
 .
 ├── docs/                 Diagrams and extra documentation
+├── common/               Platform.Common: shared names, address plan, DNS zone names
 ├── shared/               Pulumi project: App Configuration, Key Vault, Container Registry
 ├── environment/          Pulumi project: VNet, Service Bus, APIM, Front Door, Container Apps
 └── app/                  Aspire solution(s): AppHost plus the workloads (APIs, web apps, functions)
@@ -50,6 +51,17 @@ app/
 ├── <web-name>/           Web app (code, Dockerfile)
 └── <functions-name>/     Functions app (code, Dockerfile)
 ```
+
+## Pulumi Cloud
+
+One Pulumi project, `platform`, for both Pulumi folders. The stack name says what it is:
+
+| Folder | Stack |
+|---|---|
+| `shared/` | `shared` |
+| `environment/` | `test`, `uat`, `prod` |
+
+Both use the ESC environment `azure/test` for Azure login (OIDC).
 
 ## The three areas
 
@@ -207,9 +219,7 @@ Teardown is the reverse. Removing an app removes only its topics, queues, data a
 - **Entra app ownership:** is the app registration created by the environment (Pulumi), by each app (Aspire), or by hand? One per environment or one per app/API?
 - **Entra auth scope:** APIM token validation only, or also sign-in for web apps and functions?
 - **Naming convention:** pattern for resource names (for example `{workload}-{env}-{region}`) and whether shared names include the environment.
-- **Pulumi language:** C# to match Aspire, or TypeScript/Python?
-- **Pulumi backend:** Pulumi Cloud or Azure Blob storage.
-- **Cross-stack references:** `StackReference` vs values passed in from the pipeline.
+- **Cross-stack references:** resolved by `common/Platform.Common`. Names and resource ids are derived, not read from stack outputs.
 - **Subscriptions:** is shared in one subscription with environments in separate ones, or everything in one?
 - **Shared across environments:** a single registry/Key Vault/App Configuration for all environments, or does prod get its own shared instance? Key Vault and App Configuration may want per-environment labels or separate vaults for prod secrets.
 - **AI services:** which model deployments live in the environment Foundry versus per app, and the AI Search SKU (it drives replica and partition cost per environment).

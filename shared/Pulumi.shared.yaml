@@ -1,7 +1,7 @@
 config:
   azure-native:location: westus2
-  platform-shared:workload: plat
-  platform-shared:location: westus2
-  platform-shared:nameSuffix: "001"
+  platform:workload: plat
+  platform:location: westus2
+  platform:nameSuffix: "002"
 environment:
   - azure/test

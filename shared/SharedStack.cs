@@ -1,4 +1,5 @@
 using Pulumi;
+using Platform.Common;
 using Pulumi.AzureNative.AppConfiguration;
 using Pulumi.AzureNative.Authorization;
 using Pulumi.AzureNative.ContainerRegistry;
@@ -29,7 +30,7 @@ public class SharedStack : Stack
         var config = new Config();
         var workload = config.Get("workload") ?? "plat";
         // Key Vault, ACR and App Configuration names are globally unique, so a suffix is required.
-        var suffix = config.Require("nameSuffix");
+        var names = new PlatformNaming(workload, config.Require("nameSuffix"));
         var location = config.Get("location") ?? "westus2";
 
         var tags = new InputMap<string>
@@ -43,7 +44,7 @@ public class SharedStack : Stack
 
         var rg = new ResourceGroup("rg-shared", new ResourceGroupArgs
         {
-            ResourceGroupName = $"rg-{workload}-shared",
+            ResourceGroupName = names.SharedResourceGroup,
             Location = location,
             Tags = tags,
         });
@@ -51,7 +52,7 @@ public class SharedStack : Stack
         // Standard is the minimum SKU for private endpoints.
         var appConfig = new ConfigurationStore("appcs", new ConfigurationStoreArgs
         {
-            ConfigStoreName = $"appcs-{workload}-shared-{suffix}",
+            ConfigStoreName = names.SharedAppConfiguration,
             ResourceGroupName = rg.Name,
             Location = rg.Location,
             Sku = new Pulumi.AzureNative.AppConfiguration.Inputs.SkuArgs { Name = "standard" },
@@ -61,7 +62,7 @@ public class SharedStack : Stack
 
         var vault = new Vault("kv", new VaultArgs
         {
-            VaultName = $"kv-{workload}-shared-{suffix}",
+            VaultName = names.SharedKeyVault,
             ResourceGroupName = rg.Name,
             Location = rg.Location,
             Properties = new Pulumi.AzureNative.KeyVault.Inputs.VaultPropertiesArgs
@@ -83,7 +84,7 @@ public class SharedStack : Stack
         // Premium is required for private endpoints.
         var registry = new Registry("acr", new RegistryArgs
         {
-            RegistryName = $"acr{workload}shared{suffix}",
+            RegistryName = names.SharedContainerRegistry,
             ResourceGroupName = rg.Name,
             Location = rg.Location,
             Sku = new Pulumi.AzureNative.ContainerRegistry.Inputs.SkuArgs { Name = AcrSku.Premium },

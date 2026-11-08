@@ -1,0 +1,3 @@
+name: platform
+description: Environment services - VNet, Private DNS, Service Bus, Container Apps environment
+runtime: dotnet
