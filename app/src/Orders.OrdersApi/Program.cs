@@ -7,6 +7,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 builder.AddAzureCosmosClient("cosmos", configureClientOptions: o => o.UseSystemTextJsonSerializerWithOptions = CosmosJson.Options);
 builder.AddAzureServiceBusClient("messaging");
+// One long-lived sender: creating one per request opens (and closes) a new AMQP link every time.
+builder.Services.AddSingleton(sp => sp.GetRequiredService<ServiceBusClient>().CreateSender(Messaging.OrderEventsTopic));
 builder.Services.AddHttpClient("catalog", c => c.BaseAddress = new Uri("https+http://catalog-api"));
 builder.Services.AddOpenApi();
 
@@ -17,7 +19,7 @@ app.MapOpenApi();
 static Container Orders(CosmosClient c) =>
     c.GetContainer(CosmosNames.Database, CosmosNames.OrdersContainer);
 
-app.MapPost("/orders", async (PlaceOrderRequest request, CosmosClient cosmos, ServiceBusClient bus,
+app.MapPost("/orders", async (PlaceOrderRequest request, CosmosClient cosmos, ServiceBusSender sender,
     IHttpClientFactory http, CancellationToken ct) =>
 {
     if (request.Lines.Count == 0) return Results.BadRequest("An order needs at least one line.");
@@ -36,7 +38,6 @@ app.MapPost("/orders", async (PlaceOrderRequest request, CosmosClient cosmos, Se
         lines.Sum(l => l.Quantity * l.UnitPrice), "Placed", DateTimeOffset.UtcNow);
     await Orders(cosmos).CreateItemAsync(order, new PartitionKey(order.Id), cancellationToken: ct);
 
-    await using var sender = bus.CreateSender(Messaging.OrderEventsTopic);
     var evt = new OrderPlaced(order.Id, order.CustomerEmail, order.Total, order.PlacedAt);
     await sender.SendMessageAsync(new ServiceBusMessage(JsonSerializer.SerializeToUtf8Bytes(evt))
     {
