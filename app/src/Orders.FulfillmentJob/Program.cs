@@ -1,9 +1,10 @@
+using Orders.Contracts;
 using Orders.FulfillmentJob;
 
 // Runs as a scheduled Container Apps job: drain what is waiting, then exit.
 var builder = Host.CreateApplicationBuilder(args);
 builder.AddServiceDefaults();
-builder.AddAzureCosmosClient("cosmos");
+builder.AddAzureCosmosClient("cosmos", configureClientOptions: o => o.UseSystemTextJsonSerializerWithOptions = CosmosJson.Options);
 builder.AddAzureServiceBusClient("messaging");
 builder.AddAzureTableServiceClient("tables");
 builder.AddAzureQueueServiceClient("queues");

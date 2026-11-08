@@ -87,14 +87,12 @@ var ordersApi = builder.AddProject<Projects.Orders_OrdersApi>("orders-api")
     .WithComputeEnvironment(acaEnv)
     .WithReference(cosmos)
     .WithReference(messaging)
-    .WaitFor(messaging)
     .WithReference(catalog);
 
 builder.AddProject<Projects.Orders_FulfillmentJob>("fulfillment-job")
     .WithComputeEnvironment(acaEnv)
     .WithReference(cosmos)
     .WithReference(messaging)
-    .WaitFor(messaging)
     .WithReference(tables)
     .WithReference(queues)
     .PublishAsScheduledPulumiContainerAppJob("0 2 * * *");   // nightly

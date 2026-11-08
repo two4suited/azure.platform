@@ -30,3 +30,10 @@ public static class CosmosNames
     public const string ProductsContainer = "products";
     public const string OrdersContainer = "orders";
 }
+
+public static class CosmosJson
+{
+    /// <summary>camelCase so records serialize with the lowercase "id" property Cosmos requires.</summary>
+    public static readonly System.Text.Json.JsonSerializerOptions Options =
+        new(System.Text.Json.JsonSerializerDefaults.Web);
+}

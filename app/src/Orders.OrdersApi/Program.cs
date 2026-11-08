@@ -5,7 +5,7 @@ using Orders.Contracts;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
-builder.AddAzureCosmosClient("cosmos");
+builder.AddAzureCosmosClient("cosmos", configureClientOptions: o => o.UseSystemTextJsonSerializerWithOptions = CosmosJson.Options);
 builder.AddAzureServiceBusClient("messaging");
 builder.Services.AddHttpClient("catalog", c => c.BaseAddress = new Uri("https+http://catalog-api"));
 builder.Services.AddOpenApi();

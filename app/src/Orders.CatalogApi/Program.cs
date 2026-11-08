@@ -3,7 +3,7 @@ using Orders.Contracts;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
-builder.AddAzureCosmosClient("cosmos");
+builder.AddAzureCosmosClient("cosmos", configureClientOptions: o => o.UseSystemTextJsonSerializerWithOptions = CosmosJson.Options);
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
