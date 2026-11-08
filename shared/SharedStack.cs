@@ -32,6 +32,9 @@ public class SharedStack : Stack
         // Key Vault, ACR and App Configuration names are globally unique, so a suffix is required.
         var names = new PlatformNaming(workload, config.Require("nameSuffix"));
         var location = config.Get("location") ?? "westus2";
+        // Disabled once the environment private endpoints exist. Management (control plane) still works.
+        var publicNetworkAccess = config.Get("publicNetworkAccess") ?? "Disabled";
+        var publicAccessEnabled = publicNetworkAccess.Equals("Enabled", StringComparison.OrdinalIgnoreCase);
 
         var tags = new InputMap<string>
         {
@@ -57,6 +60,7 @@ public class SharedStack : Stack
             Location = rg.Location,
             Sku = new Pulumi.AzureNative.AppConfiguration.Inputs.SkuArgs { Name = "standard" },
             DisableLocalAuth = true,
+            PublicNetworkAccess = publicNetworkAccess,
             Tags = tags,
         });
 
@@ -77,6 +81,7 @@ public class SharedStack : Stack
                 EnableSoftDelete = true,
                 SoftDeleteRetentionInDays = 90,
                 EnablePurgeProtection = true,
+                PublicNetworkAccess = publicNetworkAccess,
             },
             Tags = tags,
         });
@@ -89,6 +94,9 @@ public class SharedStack : Stack
             Location = rg.Location,
             Sku = new Pulumi.AzureNative.ContainerRegistry.Inputs.SkuArgs { Name = AcrSku.Premium },
             AdminUserEnabled = false,
+            PublicNetworkAccess = publicAccessEnabled
+                ? Pulumi.AzureNative.ContainerRegistry.PublicNetworkAccess.Enabled
+                : Pulumi.AzureNative.ContainerRegistry.PublicNetworkAccess.Disabled,
             Tags = tags,
         });
 
