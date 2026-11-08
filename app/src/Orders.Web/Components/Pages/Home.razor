@@ -3,39 +3,60 @@
 @inject IHttpClientFactory Http
 
 <PageTitle>Orders</PageTitle>
-<h1>Storefront</h1>
+
+<section class="hero">
+    <h1>Good things, shipped nightly.</h1>
+    <p>Pick what you need and we'll fulfil it in tonight's run.</p>
+</section>
 
 @if (products is null)
 {
-    <p><em>Loading catalog…</em></p>
+    <p class="muted">Loading catalog…</p>
 }
 else
 {
-    <table class="table">
-        <thead><tr><th>Product</th><th>Price</th><th>Qty</th></tr></thead>
-        <tbody>
+    <div class="grid">
         @foreach (var p in products)
         {
-            <tr>
-                <td><strong>@p.Name</strong><br />@p.Description</td>
-                <td>@p.Price.ToString("C")</td>
-                <td><input type="number" min="0" style="width:5em" @bind="quantities[p.Id]" /></td>
-            </tr>
+            <article class="card">
+                <div class="card-art" aria-hidden="true">@p.Name[0]</div>
+                <h2>@p.Name</h2>
+                <p class="muted">@p.Description</p>
+                <div class="card-foot">
+                    <span class="price">@p.Price.ToString("C")</span>
+                    <div class="qty">
+                        <button type="button" aria-label="Fewer" @onclick="() => Change(p.Id, -1)">&minus;</button>
+                        <span>@quantities[p.Id]</span>
+                        <button type="button" aria-label="More" @onclick="() => Change(p.Id, 1)">+</button>
+                    </div>
+                </div>
+            </article>
         }
-        </tbody>
-    </table>
+    </div>
 
-    <input placeholder="you@example.com" @bind="email" />
-    <button class="btn btn-primary" @onclick="Place">Place order</button>
+    <section class="checkout">
+        <div>
+            <strong>@quantities.Values.Sum() items</strong>
+            <span class="muted"> &middot; @Total.ToString("C")</span>
+        </div>
+        <input type="email" placeholder="you@example.com" @bind="email" />
+        <button class="btn-go" @onclick="Place" disabled="@busy">@(busy ? "Placing…" : "Place order")</button>
+    </section>
 }
 
-@if (message is not null) { <p class="mt-3">@message</p> }
+@if (message is not null)
+{
+    <p class="notice">@message</p>
+}
 
 @code {
     List<Product>? products;
     readonly Dictionary<string, int> quantities = new();
     string email = "";
     string? message;
+    bool busy;
+
+    decimal Total => products?.Sum(p => p.Price * quantities[p.Id]) ?? 0;
 
     protected override async Task OnInitializedAsync()
     {
@@ -43,13 +64,25 @@ else
         foreach (var p in products) quantities[p.Id] = 0;
     }
 
+    void Change(string id, int delta) => quantities[id] = Math.Max(0, quantities[id] + delta);
+
     async Task Place()
     {
         var lines = quantities.Where(q => q.Value > 0).Select(q => new OrderLine(q.Key, q.Value, 0)).ToList();
         if (lines.Count == 0 || string.IsNullOrWhiteSpace(email)) { message = "Pick something and enter your email."; return; }
-        var response = await Http.CreateClient("orders").PostAsJsonAsync("/orders", new PlaceOrderRequest(email, lines));
-        message = response.IsSuccessStatusCode
-            ? $"Order placed: {(await response.Content.ReadFromJsonAsync<Order>())!.Id}"
-            : $"Could not place order ({(int)response.StatusCode}).";
+        busy = true;
+        HttpResponseMessage response;
+        try { response = await Http.CreateClient("orders").PostAsJsonAsync("/orders", new PlaceOrderRequest(email, lines)); }
+        finally { busy = false; }
+        if (response.IsSuccessStatusCode)
+        {
+            var order = (await response.Content.ReadFromJsonAsync<Order>())!;
+            message = $"Order placed. Your order number is {order.Id}.";
+            foreach (var k in quantities.Keys.ToList()) quantities[k] = 0;
+        }
+        else
+        {
+            message = $"Could not place order ({(int)response.StatusCode}).";
+        }
     }
 }

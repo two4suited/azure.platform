@@ -1,0 +1,65 @@
+@page "/track"
+@page "/track/{Id}"
+@rendermode InteractiveServer
+@inject IHttpClientFactory Http
+
+<PageTitle>Track order</PageTitle>
+
+<section class="hero">
+    <h1>Track your order</h1>
+    <p>Enter the order number you got at checkout.</p>
+</section>
+
+<form class="lookup" @onsubmit="Lookup">
+    <input placeholder="Order number" @bind="orderId" />
+    <button class="btn-go" type="submit">Look up</button>
+</form>
+
+@if (notFound)
+{
+    <p class="notice">We couldn't find that order.</p>
+}
+else if (order is not null)
+{
+    <article class="card order">
+        <div class="card-foot">
+            <h2>Order @order.Id[..8]</h2>
+            <span class="badge @order.Status.ToString().ToLowerInvariant()">@order.Status</span>
+        </div>
+        <ul class="lines">
+            @foreach (var l in order.Lines)
+            {
+                <li><span>@l.Quantity &times; @l.ProductId</span><span>@((l.Quantity * l.UnitPrice).ToString("C"))</span></li>
+            }
+        </ul>
+        <div class="card-foot">
+            <span class="muted">Placed @order.PlacedAt.LocalDateTime.ToString("g")</span>
+            <span class="price">@order.Total.ToString("C")</span>
+        </div>
+        @if (order.ShippedAt is not null)
+        {
+            <p class="muted">Shipped @order.ShippedAt.Value.LocalDateTime.ToString("g")</p>
+        }
+    </article>
+}
+
+@code {
+    [Parameter] public string? Id { get; set; }
+    string orderId = "";
+    Order? order;
+    bool notFound;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!string.IsNullOrWhiteSpace(Id)) { orderId = Id; await Lookup(); }
+    }
+
+    async Task Lookup()
+    {
+        order = null; notFound = false;
+        if (string.IsNullOrWhiteSpace(orderId)) return;
+        var response = await Http.CreateClient("orders").GetAsync($"/orders/{Uri.EscapeDataString(orderId.Trim())}");
+        if (response.IsSuccessStatusCode) order = await response.Content.ReadFromJsonAsync<Order>();
+        else notFound = true;
+    }
+}
