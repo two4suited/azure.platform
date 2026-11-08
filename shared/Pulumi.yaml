@@ -1,0 +1,3 @@
+name: platform-shared
+description: Shared services - App Configuration, Key Vault, Container Registry
+runtime: dotnet
