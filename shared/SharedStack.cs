@@ -32,8 +32,8 @@ public class SharedStack : Stack
         // Key Vault, ACR and App Configuration names are globally unique, so a suffix is required.
         var names = new PlatformNaming(workload, config.Require("nameSuffix"));
         var location = config.Get("location") ?? "westus2";
-        // Disabled once the environment private endpoints exist. Management (control plane) still works.
-        var publicNetworkAccess = config.Get("publicNetworkAccess") ?? "Disabled";
+        // Public access is allowed. Set to Disabled to force traffic through the environment private endpoints.
+        var publicNetworkAccess = config.Get("publicNetworkAccess") ?? "Enabled";
         var publicAccessEnabled = publicNetworkAccess.Equals("Enabled", StringComparison.OrdinalIgnoreCase);
 
         var tags = new InputMap<string>

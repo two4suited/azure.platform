@@ -17,7 +17,7 @@ Pulumi Cloud: project `platform`, stack `shared`. Names come from `common/Platfo
 |---|---|---|
 | `workload` | `plat` | Short workload name used in resource names |
 | `location` | `westus2` | Azure region |
-| `publicNetworkAccess` | `Disabled` | `Enabled` or `Disabled` for all three services |
+| `publicNetworkAccess` | `Enabled` | `Enabled` or `Disabled` for all three services |
 | `nameSuffix` | required | Makes the globally unique names unique (Key Vault, ACR, App Configuration) |
 
 ## Outputs
@@ -33,4 +33,4 @@ pulumi preview -s shared
 pulumi up -s shared
 ```
 
-Public network access is disabled (`publicNetworkAccess` config, default `Disabled`). Services are reached through the private endpoints each environment creates. Deploying with Pulumi still works because it uses the Azure management plane. Anything that touches the data plane (pushing images, reading secrets) must run inside a VNet with a private endpoint, or set `publicNetworkAccess: Enabled` temporarily.
+Public network access is enabled (`publicNetworkAccess` config, default `Enabled`) so laptops and hosted CI can push images and read config. Environments still get private endpoints, so workloads reach the services privately. Set `publicNetworkAccess: Disabled` to lock them down. Pulumi keeps working either way because it uses the management plane.
