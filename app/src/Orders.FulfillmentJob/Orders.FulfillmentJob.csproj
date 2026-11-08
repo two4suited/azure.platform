@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-Orders.FulfillmentJob-2063bffe-2482-4893-96f8-4d7fe629bd24</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Azure.Data.Tables" Version="13.6.4" />
+    <PackageReference Include="Aspire.Azure.Messaging.ServiceBus" Version="13.6.4" />
+    <PackageReference Include="Aspire.Azure.Storage.Queues" Version="13.6.4" />
+    <PackageReference Include="Aspire.Microsoft.Azure.Cosmos" Version="13.6.4" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Orders.ServiceDefaults\Orders.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\Orders.Contracts\Orders.Contracts.csproj" />
+  </ItemGroup>
+</Project>

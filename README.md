@@ -24,7 +24,7 @@ Infrastructure as code for an Azure platform, split into three areas that are de
 ├── common/               Platform.Common: shared names, address plan, DNS zone names
 ├── shared/               Pulumi project: App Configuration, Key Vault, Container Registry
 ├── environment/          Pulumi project: VNet, Service Bus, APIM, Front Door, Container Apps
-└── app/                  Aspire solution(s): AppHost plus the workloads (APIs, web apps, functions)
+└── app/                  Aspire solution: the Orders sample app (AppHost, web, two APIs, a job), see app/README.md
 ```
 
 Proposed contents (to confirm as we build):
@@ -60,6 +60,7 @@ One Pulumi project, `platform`, for both Pulumi folders. The stack name says wha
 |---|---|
 | `shared/` | `shared` |
 | `environment/` | `test`, `uat`, `prod` |
+| `app/` | `app-test`, `app-uat`, `app-prod` |
 
 Both use the ESC environment `azure/test` for Azure login (OIDC).
 
@@ -234,5 +235,5 @@ Teardown is the reverse. Removing an app removes only its topics, queues, data a
 1. Scaffold the three folders and CI per folder.
 2. Shared Pulumi project.
 3. Environment Pulumi project, deploy `test`.
-4. Sample app with one API in Aspire, wired through APIM and Front Door end to end.
+4. Sample app in Aspire (done: `app/`, publishes; to do: deploy, APIM import, Front Door web route).
 5. Add `uat` and `prod`, then lock down networking.

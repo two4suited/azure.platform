@@ -1,0 +1,55 @@
+@page "/"
+@rendermode InteractiveServer
+@inject IHttpClientFactory Http
+
+<PageTitle>Orders</PageTitle>
+<h1>Storefront</h1>
+
+@if (products is null)
+{
+    <p><em>Loading catalog…</em></p>
+}
+else
+{
+    <table class="table">
+        <thead><tr><th>Product</th><th>Price</th><th>Qty</th></tr></thead>
+        <tbody>
+        @foreach (var p in products)
+        {
+            <tr>
+                <td><strong>@p.Name</strong><br />@p.Description</td>
+                <td>@p.Price.ToString("C")</td>
+                <td><input type="number" min="0" style="width:5em" @bind="quantities[p.Id]" /></td>
+            </tr>
+        }
+        </tbody>
+    </table>
+
+    <input placeholder="you@example.com" @bind="email" />
+    <button class="btn btn-primary" @onclick="Place">Place order</button>
+}
+
+@if (message is not null) { <p class="mt-3">@message</p> }
+
+@code {
+    List<Product>? products;
+    readonly Dictionary<string, int> quantities = new();
+    string email = "";
+    string? message;
+
+    protected override async Task OnInitializedAsync()
+    {
+        products = await Http.CreateClient("catalog").GetFromJsonAsync<List<Product>>("/products") ?? [];
+        foreach (var p in products) quantities[p.Id] = 0;
+    }
+
+    async Task Place()
+    {
+        var lines = quantities.Where(q => q.Value > 0).Select(q => new OrderLine(q.Key, q.Value, 0)).ToList();
+        if (lines.Count == 0 || string.IsNullOrWhiteSpace(email)) { message = "Pick something and enter your email."; return; }
+        var response = await Http.CreateClient("orders").PostAsJsonAsync("/orders", new PlaceOrderRequest(email, lines));
+        message = response.IsSuccessStatusCode
+            ? $"Order placed: {(await response.Content.ReadFromJsonAsync<Order>())!.Id}"
+            : $"Could not place order ({(int)response.StatusCode}).";
+    }
+}

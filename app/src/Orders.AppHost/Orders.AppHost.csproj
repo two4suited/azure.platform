@@ -1,0 +1,32 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.6.4">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AspireUseCliBundle>true</AspireUseCliBundle>
+    <UserSecretsId>7978d29d-3692-4d9c-8edd-43ac227e8aa9</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Sheridan.Aspire.Pulumi" Version="1.2.6-pr157" />
+    <PackageReference Include="Sheridan.Aspire.Pulumi.Azure.AppConfiguration" Version="1.2.6-pr157" />
+    <PackageReference Include="Sheridan.Aspire.Pulumi.Azure.AppContainers" Version="1.2.6-pr157" />
+    <PackageReference Include="Sheridan.Aspire.Pulumi.Azure.Base" Version="1.2.6-pr157" />
+    <PackageReference Include="Sheridan.Aspire.Pulumi.Azure.ContainerRegistry" Version="1.2.6-pr157" />
+    <PackageReference Include="Sheridan.Aspire.Pulumi.Azure.CosmosDB" Version="1.2.6-pr157" />
+    <PackageReference Include="Sheridan.Aspire.Pulumi.Azure.KeyVault" Version="1.2.6-pr157" />
+    <PackageReference Include="Sheridan.Aspire.Pulumi.Azure.ServiceBus" Version="1.2.6-pr157" />
+    <PackageReference Include="Sheridan.Aspire.Pulumi.Azure.Storage" Version="1.2.6-pr157" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\common\Platform.Common\Platform.Common.csproj" IsAspireProjectResource="false" />
+    <ProjectReference Include="..\Orders.CatalogApi\Orders.CatalogApi.csproj" />
+    <ProjectReference Include="..\Orders.OrdersApi\Orders.OrdersApi.csproj" />
+    <ProjectReference Include="..\Orders.Web\Orders.Web.csproj" />
+    <ProjectReference Include="..\Orders.FulfillmentJob\Orders.FulfillmentJob.csproj" />
+  </ItemGroup>
+
+</Project>
