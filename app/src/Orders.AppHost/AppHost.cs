@@ -46,7 +46,8 @@ var acaEnv = builder.AddPulumiAzureContainerAppEnvironment("aca")
 
 var messaging = builder.AddPulumiServiceBus("messaging")
     .WithPulumiStack(stack)
-    .AsExisting(names.ServiceBus(env), names.EnvResourceGroup(env));
+    .AsExisting(names.ServiceBus(env), names.EnvResourceGroup(env))
+    .RunAsEmulator();      // local emulator for aspire start; the existing namespace on publish/deploy
 
 // ---- App-owned resources ----------------------------------------------------------------
 var orderEvents = messaging.AddServiceBusTopic("order-events", "order-events");
@@ -59,7 +60,8 @@ var storage = builder.AddPulumiStorage("storage")
     .WithResourceGroup(appRg)
     .WithLocation(location)
     .WithSku(env == "prod" ? "Standard_GRS" : "Standard_LRS")
-    .WithAzureName(AzureNameKind.StorageAccount, $"st{workload}app{env}{suffix}");
+    .WithAzureName(AzureNameKind.StorageAccount, $"st{workload}app{env}{suffix}")
+    .RunAsEmulator();      // Azurite locally
 var tables = storage.AddTables("tables");
 var queues = storage.AddQueues("queues");
 storage.AddQueue("invoice-queue", "invoice-requests");
@@ -68,7 +70,8 @@ var cosmos = builder.AddPulumiCosmosDB("cosmos")
     .WithPulumiStack(stack)
     .WithResourceGroup(appRg)
     .WithLocation(location)
-    .WithAzureName(AzureNameKind.CosmosDbAccount, $"cosmos-{workload}-app-{env}-{suffix}");
+    .WithAzureName(AzureNameKind.CosmosDbAccount, $"cosmos-{workload}-app-{env}-{suffix}")
+    .RunAsEmulator(e => e.WithDataExplorer());      // vNext emulator locally, with Data Explorer
 var ordersDb = cosmos.AddCosmosDatabase("ordersdb", "ordersdb");
 ordersDb.AddContainer("products", "/id", "products");
 ordersDb.AddContainer("orders", "/id", "orders");

@@ -10,15 +10,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Sheridan.Aspire.Pulumi" Version="1.3.0" />
-    <PackageReference Include="Sheridan.Aspire.Pulumi.Azure.AppConfiguration" Version="1.3.0" />
-    <PackageReference Include="Sheridan.Aspire.Pulumi.Azure.AppContainers" Version="1.3.0" />
-    <PackageReference Include="Sheridan.Aspire.Pulumi.Azure.Base" Version="1.3.0" />
-    <PackageReference Include="Sheridan.Aspire.Pulumi.Azure.ContainerRegistry" Version="1.3.0" />
-    <PackageReference Include="Sheridan.Aspire.Pulumi.Azure.CosmosDB" Version="1.3.0" />
-    <PackageReference Include="Sheridan.Aspire.Pulumi.Azure.KeyVault" Version="1.3.0" />
-    <PackageReference Include="Sheridan.Aspire.Pulumi.Azure.ServiceBus" Version="1.3.0" />
-    <PackageReference Include="Sheridan.Aspire.Pulumi.Azure.Storage" Version="1.3.0" />
+    <PackageReference Include="Sheridan.Aspire.Pulumi" Version="1.4.0" />
+    <PackageReference Include="Sheridan.Aspire.Pulumi.Azure.AppConfiguration" Version="1.4.0" />
+    <PackageReference Include="Sheridan.Aspire.Pulumi.Azure.AppContainers" Version="1.4.0" />
+    <PackageReference Include="Sheridan.Aspire.Pulumi.Azure.Base" Version="1.4.0" />
+    <PackageReference Include="Sheridan.Aspire.Pulumi.Azure.ContainerRegistry" Version="1.4.0" />
+    <PackageReference Include="Sheridan.Aspire.Pulumi.Azure.CosmosDB" Version="1.4.0" />
+    <PackageReference Include="Sheridan.Aspire.Pulumi.Azure.KeyVault" Version="1.4.0" />
+    <PackageReference Include="Sheridan.Aspire.Pulumi.Azure.ServiceBus" Version="1.4.0" />
+    <PackageReference Include="Sheridan.Aspire.Pulumi.Azure.Storage" Version="1.4.0" />
   </ItemGroup>
 
   <ItemGroup>
