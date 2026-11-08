@@ -13,7 +13,10 @@ Pulumi Cloud: project `platform`, stacks `test`, `uat`, `prod`.
 | Container Apps environment | `cae-{workload}-{env}` (workload profiles, VNet integrated) |
 | Private endpoints | shared Key Vault, Container Registry, App Configuration, and Service Bus when Premium |
 
-Not built yet: API Management, Front Door, AI Foundry, AI Search.
+| API Management | `apim-{workload}-{env}-{suffix}`, Standard v2, outbound VNet integration in `snet-apim` |
+| Front Door | `afd-{workload}-{env}`, Standard, endpoints `api` (to APIM) and `web` (no origin yet) |
+| AI Search | `srch-{workload}-{env}-{suffix}`, Basic, private endpoint |
+| AI Foundry | `aif-{workload}-{env}-{suffix}`, AIServices account, private endpoint |
 
 ## Config
 
@@ -23,6 +26,9 @@ Not built yet: API Management, Front Door, AI Foundry, AI Search.
 | `location` | `westus2` | Azure region |
 | `nameSuffix` | required | Must match the shared stack, shared resource ids are derived from it |
 | `serviceBusSku` | `Standard` | `Premium` adds a private endpoint and disables public access |
+| `apimPublisherEmail` | `platform-admin@example.com` | APIM publisher email, change before real use |
+| `searchSku` | `basic` | AI Search SKU |
+| `frontDoorSku` | `Standard_AzureFrontDoor` | Front Door SKU |
 | `sharedPrivateEndpoints` | `true` | Create private endpoints to the shared services. The shared stack must be deployed first. |
 
 ## Usage

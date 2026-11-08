@@ -36,6 +36,9 @@ public sealed record PlatformNaming(string Workload, string Suffix)
     public string ContainerAppsEnvironment(string env) => $"cae-{Workload}-{env}";
     public string ApiManagement(string env) => $"apim-{Workload}-{env}-{Suffix}";
     public string FrontDoor(string env) => $"afd-{Workload}-{env}";
+    public string FrontDoorApiEndpoint(string env) => $"api-{Workload}-{env}-{Suffix}";
+    public string FrontDoorWebEndpoint(string env) => $"web-{Workload}-{env}-{Suffix}";
+    public string ApiManagementGatewayHost(string env) => $"{ApiManagement(env)}.azure-api.net";
     public string AiSearch(string env) => $"srch-{Workload}-{env}-{Suffix}";
     public string AiFoundry(string env) => $"aif-{Workload}-{env}-{Suffix}";
 }
@@ -76,9 +79,10 @@ public static class PrivateDnsZones
     public const string Search = "privatelink.search.windows.net";
     public const string CognitiveServices = "privatelink.cognitiveservices.azure.com";
     public const string OpenAi = "privatelink.openai.azure.com";
+    public const string AiServices = "privatelink.services.ai.azure.com";
 
     public static readonly string[] All =
     [
-        KeyVault, ContainerRegistry, AppConfiguration, ServiceBus, Search, CognitiveServices, OpenAi,
+        KeyVault, ContainerRegistry, AppConfiguration, ServiceBus, Search, CognitiveServices, OpenAi, AiServices,
     ];
 }

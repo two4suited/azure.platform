@@ -6,6 +6,10 @@ using Pulumi.AzureNative.Network;
 using Pulumi.AzureNative.Resources;
 using Pulumi.AzureNative.ServiceBus;
 using Platform.Common;
+using Apim = Pulumi.AzureNative.ApiManagement;
+using Afd = Pulumi.AzureNative.Cdn;
+using Cog = Pulumi.AzureNative.CognitiveServices;
+using Srch = Pulumi.AzureNative.Search;
 using NetIn = Pulumi.AzureNative.Network.Inputs;
 using PrivateDnsLink = Pulumi.AzureNative.PrivateDns.VirtualNetworkLink;
 using PrivateDnsLinkArgs = Pulumi.AzureNative.PrivateDns.VirtualNetworkLinkArgs;
@@ -28,6 +32,12 @@ public class EnvironmentStack : Stack
     [Output("serviceBusEndpoint")] public Output<string> ServiceBusEndpoint { get; set; }
     [Output("containerAppsEnvironmentName")] public Output<string> ContainerAppsEnvironmentName { get; set; }
     [Output("containerAppsEnvironmentId")] public Output<string> ContainerAppsEnvironmentId { get; set; }
+    [Output("apiManagementName")] public Output<string> ApiManagementName { get; set; }
+    [Output("apiManagementGatewayUrl")] public Output<string> ApiManagementGatewayUrl { get; set; }
+    [Output("frontDoorApiHostname")] public Output<string> FrontDoorApiHostname { get; set; }
+    [Output("frontDoorWebHostname")] public Output<string> FrontDoorWebHostname { get; set; }
+    [Output("searchEndpoint")] public Output<string> SearchEndpoint { get; set; }
+    [Output("foundryEndpoint")] public Output<string> FoundryEndpoint { get; set; }
     [Output("containerAppsDefaultDomain")] public Output<string> ContainerAppsDefaultDomain { get; set; }
 
     public EnvironmentStack()
@@ -40,6 +50,10 @@ public class EnvironmentStack : Stack
         var location = config.Get("location") ?? "westus2";
         // Private endpoints need Premium Service Bus. Standard is used where cost matters (test).
         var serviceBusSku = config.Get("serviceBusSku") ?? "Standard";
+        var apimPublisherEmail = config.Get("apimPublisherEmail") ?? "platform-admin@example.com";
+        var apimPublisherName = config.Get("apimPublisherName") ?? "Platform";
+        var searchSku = config.Get("searchSku") ?? "basic";
+        var frontDoorSku = config.Get("frontDoorSku") ?? "Standard_AzureFrontDoor";
         var sharedPrivateEndpoints = config.GetBoolean("sharedPrivateEndpoints") ?? true;
 
         var tags = new InputMap<string>
@@ -167,11 +181,148 @@ public class EnvironmentStack : Stack
             Tags = tags,
         });
 
+        // ---- API Management (Standard v2: outbound VNet integration through snet-apim) ----
+        var apimService = new Apim.ApiManagementService("apim", new Apim.ApiManagementServiceArgs
+        {
+            ServiceName = names.ApiManagement(env),
+            ResourceGroupName = rg.Name,
+            Location = rg.Location,
+            PublisherEmail = apimPublisherEmail,
+            PublisherName = apimPublisherName,
+            Sku = new Apim.Inputs.ApiManagementServiceSkuPropertiesArgs { Name = "StandardV2", Capacity = 1 },
+            VirtualNetworkType = "External",
+            VirtualNetworkConfiguration = new Apim.Inputs.VirtualNetworkConfigurationArgs
+            {
+                SubnetResourceId = SubnetId(SubnetNames.Apim),
+            },
+            Identity = new Apim.Inputs.ApiManagementServiceIdentityArgs { Type = Apim.ApimIdentityType.SystemAssigned },
+            Tags = tags,
+        });
+
+        // ---- AI Search ----
+        var search = new Srch.Service("search", new Srch.ServiceArgs
+        {
+            SearchServiceName = names.AiSearch(env),
+            ResourceGroupName = rg.Name,
+            Location = rg.Location,
+            Sku = new Srch.Inputs.SkuArgs { Name = Srch.SkuName.Basic },
+            ReplicaCount = 1,
+            PartitionCount = 1,
+            HostingMode = Srch.HostingMode.Default,
+            DisableLocalAuth = true,
+            PublicNetworkAccess = Srch.PublicNetworkAccess.Enabled,
+            Identity = new Srch.Inputs.IdentityArgs { Type = Srch.IdentityType.SystemAssigned },
+            Tags = tags,
+        });
+
+        // ---- AI Foundry (AIServices account) ----
+        var foundry = new Cog.Account("foundry", new Cog.AccountArgs
+        {
+            AccountName = names.AiFoundry(env),
+            ResourceGroupName = rg.Name,
+            Location = rg.Location,
+            Kind = "AIServices",
+            Sku = new Cog.Inputs.SkuArgs { Name = "S0" },
+            Identity = new Cog.Inputs.IdentityArgs { Type = Cog.ResourceIdentityType.SystemAssigned },
+            Properties = new Cog.Inputs.AccountPropertiesArgs
+            {
+                CustomSubDomainName = names.AiFoundry(env),
+                DisableLocalAuth = true,
+                PublicNetworkAccess = "Enabled",
+                AllowProjectManagement = true,
+            },
+            Tags = tags,
+        });
+
+        // ---- Front Door: one profile, an api endpoint to APIM and a web endpoint for web apps ----
+        var afdProfile = new Afd.Profile("afd", new Afd.ProfileArgs
+        {
+            ProfileName = names.FrontDoor(env),
+            ResourceGroupName = rg.Name,
+            Location = "global",
+            Sku = new Afd.Inputs.SkuArgs { Name = frontDoorSku },
+            Tags = tags,
+        });
+
+        var apiEndpoint = new Afd.AFDEndpoint("afd-api", new Afd.AFDEndpointArgs
+        {
+            EndpointName = names.FrontDoorApiEndpoint(env),
+            ProfileName = afdProfile.Name,
+            ResourceGroupName = rg.Name,
+            Location = "global",
+            EnabledState = Afd.EnabledState.Enabled,
+            Tags = tags,
+        });
+
+        var webEndpoint = new Afd.AFDEndpoint("afd-web", new Afd.AFDEndpointArgs
+        {
+            EndpointName = names.FrontDoorWebEndpoint(env),
+            ProfileName = afdProfile.Name,
+            ResourceGroupName = rg.Name,
+            Location = "global",
+            EnabledState = Afd.EnabledState.Enabled,
+            Tags = tags,
+        });
+
+        var apimOriginGroup = new Afd.AFDOriginGroup("afd-apim-og", new Afd.AFDOriginGroupArgs
+        {
+            OriginGroupName = "apim",
+            ProfileName = afdProfile.Name,
+            ResourceGroupName = rg.Name,
+            LoadBalancingSettings = new Afd.Inputs.LoadBalancingSettingsParametersArgs
+            {
+                SampleSize = 4,
+                SuccessfulSamplesRequired = 3,
+            },
+            HealthProbeSettings = new Afd.Inputs.HealthProbeParametersArgs
+            {
+                ProbePath = "/status-0123456789abcdef",
+                ProbeRequestType = Afd.HealthProbeRequestType.GET,
+                ProbeProtocol = Afd.ProbeProtocol.Https,
+                ProbeIntervalInSeconds = 100,
+            },
+        });
+
+        var apimOrigin = new Afd.AFDOrigin("afd-apim-origin", new Afd.AFDOriginArgs
+        {
+            OriginName = "apim",
+            OriginGroupName = apimOriginGroup.Name,
+            ProfileName = afdProfile.Name,
+            ResourceGroupName = rg.Name,
+            HostName = names.ApiManagementGatewayHost(env),
+            OriginHostHeader = names.ApiManagementGatewayHost(env),
+            HttpPort = 80,
+            HttpsPort = 443,
+            Priority = 1,
+            Weight = 1000,
+            EnabledState = Afd.EnabledState.Enabled,
+            EnforceCertificateNameCheck = true,
+        }, new CustomResourceOptions { DependsOn = { apimService } });
+
+        _ = new Afd.Route("afd-api-route", new Afd.RouteArgs
+        {
+            RouteName = "api",
+            EndpointName = apiEndpoint.Name,
+            ProfileName = afdProfile.Name,
+            ResourceGroupName = rg.Name,
+            OriginGroup = new Afd.Inputs.ResourceReferenceArgs { Id = apimOriginGroup.Id },
+            PatternsToMatch = { "/*" },
+            SupportedProtocols = { Afd.AFDEndpointProtocols.Https },
+            ForwardingProtocol = Afd.ForwardingProtocol.HttpsOnly,
+            HttpsRedirect = Afd.HttpsRedirect.Enabled,
+            LinkToDefaultDomain = Afd.LinkToDefaultDomain.Enabled,
+            EnabledState = Afd.EnabledState.Enabled,
+        }, new CustomResourceOptions { DependsOn = { apimOrigin } });
+
         // ---- Private endpoints ----
         if (isPremiumBus)
         {
             PrivateEndpointFor("sb", serviceBus.Id, "namespace", PrivateDnsZones.ServiceBus);
         }
+
+        PrivateEndpointFor("search", search.Id, "searchService", PrivateDnsZones.Search);
+        PrivateEndpointFor("foundry", foundry.Id, "account",
+            PrivateDnsZones.CognitiveServices, PrivateDnsZones.OpenAi, PrivateDnsZones.AiServices);
 
         if (sharedPrivateEndpoints)
         {
@@ -185,6 +336,12 @@ public class EnvironmentStack : Stack
         VirtualNetworkName = vnet.Name;
         ServiceBusNamespace = serviceBus.Name;
         ServiceBusEndpoint = Output.Create($"{names.ServiceBus(env)}.servicebus.windows.net");
+        ApiManagementName = apimService.Name;
+        ApiManagementGatewayUrl = Output.Create($"https://{names.ApiManagementGatewayHost(env)}");
+        FrontDoorApiHostname = apiEndpoint.HostName;
+        FrontDoorWebHostname = webEndpoint.HostName;
+        SearchEndpoint = Output.Create($"https://{names.AiSearch(env)}.search.windows.net");
+        FoundryEndpoint = Output.Create($"https://{names.AiFoundry(env)}.services.ai.azure.com");
         ContainerAppsEnvironmentName = containerAppsEnvironment.Name;
         ContainerAppsEnvironmentId = containerAppsEnvironment.Id;
         ContainerAppsDefaultDomain = containerAppsEnvironment.DefaultDomain;
@@ -199,7 +356,7 @@ public class EnvironmentStack : Stack
                 Tags = tags,
             });
 
-        void PrivateEndpointFor(string key, Input<string> targetId, string groupId, string zoneName)
+        void PrivateEndpointFor(string key, Input<string> targetId, string groupId, params string[] zoneNames)
         {
             var endpoint = new PrivateEndpoint($"pe-{key}", new PrivateEndpointArgs
             {
@@ -224,10 +381,9 @@ public class EnvironmentStack : Stack
                 PrivateDnsZoneGroupName = "default",
                 PrivateEndpointName = endpoint.Name,
                 ResourceGroupName = rg.Name,
-                PrivateDnsZoneConfigs =
-                {
-                    new NetIn.PrivateDnsZoneConfigArgs { Name = "config", PrivateDnsZoneId = zones[zoneName].Id },
-                },
+                PrivateDnsZoneConfigs = zoneNames
+                    .Select(z => new NetIn.PrivateDnsZoneConfigArgs { Name = z.Replace(".", "-"), PrivateDnsZoneId = zones[z].Id })
+                    .ToList(),
             });
         }
     }
