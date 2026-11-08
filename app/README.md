@@ -69,5 +69,5 @@ The AppHost uses `AsExisting` for Service Bus, Container Apps environment and Co
 - **APIM:** the OpenAPI documents (`/openapi/v1.json` on each API) are not imported into API Management yet. The library has no `AsExisting` for APIM.
 - **Front Door web route:** the environment stack has a `web` endpoint but no origin for this app yet.
 - **One identity:** the library gives all workloads in a compute environment one user-assigned identity, so per-workload RBAC is not possible yet.
-- **Local run:** the Service Bus integration has no emulator, so the AppHost is for publish and deploy, not `aspire run`.
+- **Local run:** `aspire start` uses emulators (Cosmos, Azurite, and the official Service Bus emulator, which needs SQL Server). On Apple Silicon the SQL Server container crashes under QEMU unless Docker Desktop has "Use Rosetta for x86_64/amd64 emulation" turned on. The Cosmos emulator is slow to start (503s at first), and I haven't confirmed the `ordersdb` database and containers get created locally.
 - **Not deployed:** this has only been published (generated Pulumi program checked), not applied to Azure.
